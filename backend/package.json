@@ -1,0 +1,23 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.8",
+    "chromadb": "^3.0.10",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "openai": "^5.11.0",
+    "pdf-parse": "^1.1.1",
+    "pdf-text-reader": "^5.1.0"
+  }
+}

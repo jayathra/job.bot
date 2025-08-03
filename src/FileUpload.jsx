@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { styled } from '@mui/material/styles';
-import Button from '@mui/material/Button';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import IconButton from '@mui/material/IconButton';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ListFiles from './ListFiles';
+import FileUploadButton from './FileUploadButton';
+import SubmitFiles from './SubmitFiles';
+import axios from 'axios';
 
 export default function FileUpload() {
 
@@ -18,49 +17,38 @@ export default function FileUpload() {
     const fileDeleteHandler = (indexToDelete) => {
         setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToDelete))
     }
-    
-    const VisuallyHiddenInput = styled('input')({
-          clip: 'rect(0 0 0 0)',
-          clipPath: 'inset(50%)',
-          height: 1,
-          overflow: 'hidden',
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          whiteSpace: 'nowrap',
-          width: 1,
-        });
+
+    const submitFileHandler = async () => {
+        
+        if (files.length === 0) return;
+
+        const formData = new FormData();
+
+        files.forEach(file => {
+            formData.append('files', file);
+        })
+
+        try {
+            const response = await axios.post('http://localhost:5000/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+            console.log('Upload successful:', response.data);
+        } catch (error) {
+            console.error('Upload failed:', error)
+        }
+    }
     
     return (
-        <div>
-            <Button
-                component="label"
-                role={undefined}
-                variant="contained"
-                tabIndex={-1}
-                startIcon={<CloudUploadIcon />}
-            >
-                Upload files
-                <VisuallyHiddenInput
-                type="file"
-                onChange={(e) => fileUploadHandler(e)}
-                multiple
-            />
-            </Button>
-            
+        <>
+            <FileUploadButton fileUploadHandler={fileUploadHandler} />           
             {files.length > 0 && (
-                <div>
-                    <h3>Uploaded Files:</h3>
-                    <ul>
-                        {files.map((file, index) => (
-                            <li key={index}>
-                                {file.name} ({(file.size / 1024).toFixed(2)} KB)
-                                <IconButton onClick={() => fileDeleteHandler(index)} aria-label="delete"><DeleteIcon /></IconButton>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                <>
+                <ListFiles files={files} fileDeleteHandler={fileDeleteHandler} />
+                <SubmitFiles submitFileHandler={submitFileHandler} />
+                </>
             )}
-        </div>
+        </>
     )
 }
