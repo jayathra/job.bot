@@ -18,6 +18,7 @@
     "multer": "^2.0.2",
     "openai": "^5.11.0",
     "pdf-parse": "^1.1.1",
-    "pdf-text-reader": "^5.1.0"
+    "pdf-text-reader": "^5.1.0",
+    "zod": "^3.25.76"
   }
 }

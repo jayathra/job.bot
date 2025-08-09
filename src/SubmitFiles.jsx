@@ -8,7 +8,7 @@ export default function SubmitFiles({ submitFileHandler }) {
                 onClick={submitFileHandler} 
                 variant="outlined" 
             >
-                Extract Text from PDFs
+                SUBMIT
             </Button>
         </>   
     )

@@ -2,11 +2,14 @@ import { useState } from 'react';
 import ListFiles from './ListFiles';
 import FileUploadButton from './FileUploadButton';
 import SubmitFiles from './SubmitFiles';
+import JobPostingText from './JobPostingText';
 import axios from 'axios';
 
 export default function FileUpload() {
 
     const [files, setFiles] = useState([]);
+
+    const [jobPosting, setJobPosting] = useState("");
 
     const fileUploadHandler = (e) => {
         const newFiles = Array.from(e.target.files);
@@ -24,31 +27,41 @@ export default function FileUpload() {
 
         const formData = new FormData();
 
+        formData.append('jobPosting', jobPosting)
+
         files.forEach(file => {
             formData.append('files', file);
         })
 
-        try {
+        if (jobPosting.trim()) {
+            try {
             const response = await axios.post('http://localhost:5000/upload', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             })
             console.log('Upload successful:', response.data);
-        } catch (error) {
-            console.error('Upload failed:', error)
-        }
+            } catch (error) {
+                console.error('Upload failed:', error)
+            }
+        }      
+    }
+
+    const jobPostingInputHandler = (e) => {
+        setJobPosting(e.target.value)
     }
     
     return (
         <>
-            <FileUploadButton fileUploadHandler={fileUploadHandler} />           
+            <FileUploadButton fileUploadHandler={fileUploadHandler} />         
             {files.length > 0 && (
                 <>
                 <ListFiles files={files} fileDeleteHandler={fileDeleteHandler} />
+                <JobPostingText jobPostingInputHandler={jobPostingInputHandler}/>
                 <SubmitFiles submitFileHandler={submitFileHandler} />
                 </>
             )}
+
         </>
     )
 }
