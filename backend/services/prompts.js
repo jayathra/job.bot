@@ -6,8 +6,6 @@ const DOC_CHUNKING_DEVELOPER_PROMPT = `You are a precise document chunking engin
     - ONLY segment existing text - preserve exact wording, punctuation, and formatting
     - Maintain context within each chunk
     - Allow 50-100 character overlap between adjacent chunks when it preserves continuity
-    - Ensure no sentence is split
-    - Maintain chronological relationships where present
 
     DOCUMENT TYPES YOU WILL PROCESS:
     - Professional resumes and CVs
@@ -44,10 +42,19 @@ const DOC_CHUNKING_DEVELOPER_PROMPT = `You are a precise document chunking engin
     - "education": Degrees, institutions, dates, academic achievements
     - "skills_technical": Programming languages, software, technical competencies
     - "skills_soft": Leadership, communication, interpersonal skills
-    - "projects": Personal/professional projects, descriptions, outcomes
-    - "certifications": Professional certifications, licenses, credentials
-    - "achievements": Awards, recognitions, notable accomplishments
+    - "project": Personal/professional projects, descriptions, outcomes
+    - "certification": Professional certifications, licenses, credentials
+    - "achievement": Awards, recognitions, notable accomplishments
     - "other": Content that doesn't fit above categories
+
+        IMPORTANT RULES:
+    - Extract text exactly as written - no paraphrasing or editing
+    - If chunks are mixed together, separate them logically
+    - Preserve all original formatting including spacing, bullet points and line breaks
+    - Do not add explanatory text or section headers that aren't in the original
+    - If you cannot clearly identify a section type, use "additional_info"
+    - EACH content type MUST be in its own separate chunk.
+    - Use overlap_chars field to indicate character overlap when splitting long content
 
     Remember: You are a segmentation tool, not a content interpreter. Your only job is intelligent text division while maintaining perfect fidelity to the source material. Return only the JSON, no explanations.`;
 
@@ -125,7 +132,7 @@ const JOB_POSTING_CHUNKING_DEVELOPER_PROMPT = `You are a precise job posting ana
     IMPORTANT RULES:
     - Extract text exactly as written - no paraphrasing or editing
     - If sections are mixed together, separate them logically
-    - Preserve all original formatting including bullet points and line breaks
+    - Preserve all original formatting including spacing, bullet points and line breaks
     - Do not add explanatory text or section headers that aren't in the original
     - If you cannot clearly identify a section type, use "additional_info"
     - EACH responsibility and requirement MUST be in its own separate chunk

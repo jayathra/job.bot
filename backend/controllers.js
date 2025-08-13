@@ -1,4 +1,4 @@
-import { processor } from "./services.js";
+import { processor } from "./services/services.js";
 
 
 export const uploader = async (req, res) => {
@@ -16,7 +16,7 @@ export const uploader = async (req, res) => {
             })
         }
 
-        const result = await processor(req.files, req.body.jobPosting)
+        const result = await processor(req.files, req.body.jobPosting, req.body.mode)
     
         res.json({
             jobPostingChunks: result.jobPostingChunks,

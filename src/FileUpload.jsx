@@ -21,13 +21,14 @@ export default function FileUpload() {
         setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToDelete))
     }
 
-    const submitFileHandler = async () => {
+    const submitFileHandler = async (mode) => {
         
         if (files.length === 0) return;
 
         const formData = new FormData();
 
         formData.append('jobPosting', jobPosting)
+        formData.append('mode', mode)
 
         files.forEach(file => {
             formData.append('files', file);
@@ -58,7 +59,8 @@ export default function FileUpload() {
                 <>
                 <ListFiles files={files} fileDeleteHandler={fileDeleteHandler} />
                 <JobPostingText jobPostingInputHandler={jobPostingInputHandler}/>
-                <SubmitFiles submitFileHandler={submitFileHandler} />
+                <SubmitFiles submitFileHandler={() => submitFileHandler('gpt')} buttonText="Submit to gpt" />
+                <SubmitFiles submitFileHandler={() => submitFileHandler('qwen')} buttonText="Submit to qwen" />
                 </>
             )}
 

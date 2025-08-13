@@ -19,6 +19,7 @@
     "openai": "^5.12.2",
     "pdf-parse": "^1.1.1",
     "pdf-text-reader": "^5.1.0",
+    "string-similarity": "^4.0.4",
     "zod": "^3.25.76"
   }
 }
