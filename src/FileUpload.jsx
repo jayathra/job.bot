@@ -3,6 +3,7 @@ import ListFiles from './ListFiles';
 import FileUploadButton from './FileUploadButton';
 import SubmitFiles from './SubmitFiles';
 import JobPostingText from './JobPostingText';
+import ModelSelector from './modelSelector';
 import axios from 'axios';
 
 export default function FileUpload() {
@@ -10,6 +11,8 @@ export default function FileUpload() {
     const [files, setFiles] = useState([]);
 
     const [jobPosting, setJobPosting] = useState("");
+
+    const [model, setModel] = useState("gpt")
 
     const fileUploadHandler = (e) => {
         const newFiles = Array.from(e.target.files);
@@ -21,14 +24,14 @@ export default function FileUpload() {
         setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToDelete))
     }
 
-    const submitFileHandler = async (mode) => {
+    const submitFileHandler = async (model) => {
         
         if (files.length === 0) return;
 
         const formData = new FormData();
 
         formData.append('jobPosting', jobPosting)
-        formData.append('mode', mode)
+        formData.append('model', model)
 
         files.forEach(file => {
             formData.append('files', file);
@@ -51,6 +54,10 @@ export default function FileUpload() {
     const jobPostingInputHandler = (e) => {
         setJobPosting(e.target.value)
     }
+
+    const handleSelector = (e) => {
+        setModel(e.target.value)
+    }
     
     return (
         <>
@@ -59,8 +66,8 @@ export default function FileUpload() {
                 <>
                 <ListFiles files={files} fileDeleteHandler={fileDeleteHandler} />
                 <JobPostingText jobPostingInputHandler={jobPostingInputHandler}/>
-                <SubmitFiles submitFileHandler={() => submitFileHandler('gpt')} buttonText="Submit to gpt" />
-                <SubmitFiles submitFileHandler={() => submitFileHandler('qwen')} buttonText="Submit to qwen" />
+                <ModelSelector handleSelector={handleSelector} model={model} />
+                <SubmitFiles submitFileHandler={() => submitFileHandler(model)} />
                 </>
             )}
 

@@ -16,7 +16,8 @@ export const uploader = async (req, res) => {
             })
         }
 
-        const result = await processor(req.files, req.body.jobPosting, req.body.mode)
+        console.log("Sending uploaded documents and job posting for processing")
+        const result = await processor(req.files, req.body.jobPosting, req.body.model)
     
         res.json({
             jobPostingChunks: result.jobPostingChunks,

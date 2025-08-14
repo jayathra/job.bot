@@ -1,6 +1,6 @@
 import Button from '@mui/material/Button';
 
-export default function SubmitFiles({ submitFileHandler, buttonText }) {
+export default function SubmitFiles({ submitFileHandler }) {
     
     return (
         <>
@@ -8,7 +8,7 @@ export default function SubmitFiles({ submitFileHandler, buttonText }) {
                 onClick={submitFileHandler} 
                 variant="outlined" 
             >
-                {buttonText}
+                SUBMIT
             </Button>
         </>   
     )

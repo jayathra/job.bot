@@ -28,7 +28,7 @@ export const format = {
     required: ["chunks"]
 };
 
-// Schema definition for llm chunking
+// Frontier LLM chunking schema
 export const chunkSchema = z.object({
     chunks: z.array(
         z.object({
@@ -41,6 +41,8 @@ export const chunkSchema = z.object({
 });
 
 export const parseFiles = async (files) => {
+
+    console.log("Parsing uploaded PDFs")
     const parsedPdfs = []
 
     for (const file of files) {
@@ -48,7 +50,9 @@ export const parseFiles = async (files) => {
         parsedPdfs.push(data.text)
     }
 
-    return parsedPdfs
+    const concatParsedPdfs = parsedPdfs.join("\n\nNext Document\n\n");
+
+    return concatParsedPdfs
 }
 
 export const normalizeText = (str) => {
@@ -66,6 +70,8 @@ export const normalizeText = (str) => {
 }
 
 export const verifyChunks = (chunkArray, fullText) => {
+
+    console.log("Chunk verification process initialized")
     const normFull = normalizeText(fullText);
     let verified = true;
     let idxArray = [];
@@ -85,9 +91,20 @@ export const verifyChunks = (chunkArray, fullText) => {
         if (!found) {
             verified = false;
             idxArray.push(i);
-            console.log('FAILED CHUNK:', chunkArray[i].content);
-            console.log('NORMALIZED CHUNK:', normChunk);
+            console.log('Failed chunk: ', chunkArray[i].content);
+            console.log('Normalized chunk: ', normChunk);
         }
     }
     return { verified, idxArray };
+}
+
+export const vectorDbPrep = (chunkArray) => {
+    const documents = chunkArray.map(chunk => chunk.content);
+    const metadatas = chunkArray.map(chunk => ({
+        section_type: chunk.section_type,
+        char_count: chunk.char_count,
+        overlap_chars: chunk.overlap_chars
+    }));
+    const ids = chunkArray.map((_, idx) => `docchunk_${idx}_${Date.now()}`);
+    return { documents, metadatas, ids }
 }

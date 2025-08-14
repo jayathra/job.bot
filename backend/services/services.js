@@ -5,11 +5,12 @@ import {
 import { zodTextFormat } from "openai/helpers/zod";
 import { format } from './serviceUtils.js'
 
-// import { ChromaClient } from "chromadb";
+import { ChromaClient } from "chromadb";
+import { OpenAIEmbeddingFunction } from "@chroma-core/openai";
 import OpenAI from "openai";
 import axios from 'axios';
 
-import { chunkSchema, parseFiles, verifyChunks } from './serviceUtils.js';
+import { chunkSchema, parseFiles, verifyChunks, vectorDbPrep } from './serviceUtils.js';
 
 import dotenv from 'dotenv';
 dotenv.config()
@@ -18,16 +19,22 @@ const openAiClient = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-// const chromaClient = new ChromaClient({
-//     host: "localhost",
-//     port: "8000"
-// });
+const chromaClient = new ChromaClient({
+    host: "localhost",
+    port: "8000"
+});
 
-// const collection = await chromaClient.getOrCreateCollection({
-//     name: "jobbot_collection",
-// });
+const jobDocCollection = await chromaClient.getOrCreateCollection({
+    name: "jobDocs",
+    embeddingFunction: new OpenAIEmbeddingFunction({
+        apiKey: process.env.OPENAI_API_KEY,
+        modelName: "text-embedding-3-small"
+    })
+});
 
 export const llmChunking = async (devPrompt, userPrompt) => {
+
+    console.log("Frontier LLM chunking initialized")
     const response = await openAiClient.responses.create({
         model: "gpt-4o-mini",
         input: [
@@ -51,6 +58,8 @@ export const llmChunking = async (devPrompt, userPrompt) => {
 }
 
 export const localLlmChunking = async (devPrompt, userPrompt) => {
+    
+    console.log("Local LLM chunking initialized")
     const response = await axios.post('http://localhost:11434/api/generate', {
         model: 'qwen3:8b',
         prompt: `${devPrompt}\n\n${userPrompt}`,
@@ -61,33 +70,71 @@ export const localLlmChunking = async (devPrompt, userPrompt) => {
     // The Ollama API returns the response as a string, so parse the JSON from the response
     const parsedResponse = JSON.parse(response.data.response);
 
-    return parsedResponse.chunks;
+    return new Set(parsedResponse.chunks);
 }
 
-export const processor = async (files, jobPostingText, mode = 'gpt') => {
-    const parsedPdfs = await parseFiles(files)
-    const concatParsedPdfs = parsedPdfs.join("\n\nNext Document\n\n")
-    const userPromptDocs = `Please chunk the following career documents:\n\n${concatParsedPdfs}`
+// Helper to select the correct chunking function
+export const getChunks = async (model, devPrompt, userPrompt) => {
+    return model === 'qwen'
+        ? await localLlmChunking(devPrompt, userPrompt)
+        : await llmChunking(devPrompt, userPrompt);
+};
 
-    let docChunks, jobPostingChunks;
+export const chunkWithVerification = async ({ model, devPrompt, userPrompt, verifyAgainst, maxAttempts = 5 }) => {
+    let chunks;
+    let verified = false;
+    let attempts = 0;
 
-    if (mode === 'qwen') {
-        docChunks = await localLlmChunking(DOC_CHUNKING_DEVELOPER_PROMPT, userPromptDocs)
-    } else {
-        docChunks = await llmChunking(DOC_CHUNKING_DEVELOPER_PROMPT, userPromptDocs)
+    while (!verified && attempts < maxAttempts) {
+        chunks = await getChunks(model, devPrompt, userPrompt);
+        verified = verifyChunks(chunks, verifyAgainst).verified;
+        attempts++;
+        if (!verified) {
+            console.log(`Chunk verification failed (attempt ${attempts}). Retrying...`, verified.idxArray);
+        }
+        console.log("Chunk verification completed: ", verified)
     }
-    console.log("Document chunk verification: ", verifyChunks(docChunks, concatParsedPdfs));
+
+    return chunks;
+}
+
+export const processor = async (files, jobPostingText, model = 'gpt') => {
+    // Parse and concatenate PDFs
+    const concatParsedPdfs = await parseFiles(files);
+
+    // Prepare prompts
+    const userPromptDocs = `Please chunk the following career documents:\n\n${concatParsedPdfs}`;
+    const userPromptJobPosting = `Please chunk the following job posting:\n\n${jobPostingText}`;
+
+    const docChunks = await chunkWithVerification({
+        model,
+        devPrompt: DOC_CHUNKING_DEVELOPER_PROMPT,
+        userPrompt: userPromptDocs,
+        verifyAgainst: concatParsedPdfs
+    });
+
+    const jobPostingChunks = await chunkWithVerification({
+        model,
+        devPrompt: JOB_POSTING_CHUNKING_DEVELOPER_PROMPT,
+        userPrompt: userPromptJobPosting,
+        verifyAgainst: jobPostingText
+    });
+
+    // Prepare and upsert to ChromaDB
+    const { documents, metadatas, ids } = vectorDbPrep(docChunks);
+    await jobDocCollection.upsert({ documents, metadatas, ids });
+
     console.log("Document chunks are: ", docChunks);
-
-    const userPromptJobPosting = `Please chunk the following job posting:\n\n${jobPostingText}`
-    if (mode === 'qwen') {
-        jobPostingChunks = await localLlmChunking(JOB_POSTING_CHUNKING_DEVELOPER_PROMPT, userPromptJobPosting)
-    } else {
-        jobPostingChunks = await llmChunking(JOB_POSTING_CHUNKING_DEVELOPER_PROMPT, userPromptJobPosting)
-    }
-    console.log("Job posting chunk verification: ", verifyChunks(jobPostingChunks, jobPostingText));
     console.log("Job Posting chunks are: ", jobPostingChunks);
 
-    return { docChunks, jobPostingChunks }
-}
+    return { docChunks, jobPostingChunks };
+};
+
+
+
+
+
+
+
+
 
