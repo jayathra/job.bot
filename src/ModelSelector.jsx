@@ -15,6 +15,9 @@ export default function ModelSelector({ handleSelector, model }) {
                 label="Select Model"
                 onChange={handleSelector}
             >
+                <MenuItem value="">
+                    <em>None</em>
+                </MenuItem>
                 <MenuItem value="gpt">GPT</MenuItem>
                 <MenuItem value="qwen">Qwen</MenuItem>
             </Select>

@@ -12,7 +12,7 @@ export default function FileUpload() {
 
     const [jobPosting, setJobPosting] = useState("");
 
-    const [model, setModel] = useState("gpt")
+    const [model, setModel] = useState("")
 
     const fileUploadHandler = (e) => {
         const newFiles = Array.from(e.target.files);
@@ -64,10 +64,14 @@ export default function FileUpload() {
             <FileUploadButton fileUploadHandler={fileUploadHandler} />         
             {files.length > 0 && (
                 <>
-                <ListFiles files={files} fileDeleteHandler={fileDeleteHandler} />
-                <JobPostingText jobPostingInputHandler={jobPostingInputHandler}/>
-                <ModelSelector handleSelector={handleSelector} model={model} />
-                <SubmitFiles submitFileHandler={() => submitFileHandler(model)} />
+                    <ListFiles files={files} fileDeleteHandler={fileDeleteHandler} />
+                    <JobPostingText jobPostingInputHandler={jobPostingInputHandler}/>
+                    {jobPosting.trim() && (
+                        <ModelSelector handleSelector={handleSelector} model={model} />
+                    )}
+                    {jobPosting.trim() && model && (
+                        <SubmitFiles submitFileHandler={() => submitFileHandler(model)} />
+                    )}
                 </>
             )}
 
