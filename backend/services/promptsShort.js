@@ -12,7 +12,7 @@ REQUIREMENTS:
 - Each individual work experience (at a specific place doing a specific role) should be in a single chunk where multiple bullet points can be listed within the same chunk. 
 
 SECTION TYPES:
-- contact_info, professional_summary, work_experience, education, skills_technical, skills_soft, project, certification, achievement, other, additional_info
+- full_name, contact_info, professional_summary, work_experience, education, skills_technical, skills_soft, project, certification, achievement, other, additional_info
 
 OUTPUT:
 Return only JSON: { "chunks": [ { "section_type": "...", "content": "...", "char_count": ..., "overlap_chars": ... }, ... ] }
@@ -34,7 +34,7 @@ REQUIREMENTS:
 - Preserve all original formatting, line breaks, and punctuation.
 
 SECTION TYPES:
-- company_description, job_overview, position_details, responsibility, requirement_must_have, requirement_nice_to_have, benefits_compensation, application_process, additional_info
+- company_description, job_title, job_overview, position_details, responsibility, requirement_must_have, requirement_nice_to_have, benefits_compensation, application_process, additional_info
 
 OUTPUT:
 Return only JSON: { "chunks": [ { "section_type": "...", "content": "...", "char_count": ..., "overlap_chars": ... }, ... ] }
@@ -44,4 +44,26 @@ Chunks must be direct substrings of the original posting and pass a verification
 
 Do not add explanations or headers. Only segment and return the JSON as specified.`;
 
-export { DOC_CHUNKING_DEVELOPER_PROMPT, JOB_POSTING_CHUNKING_DEVELOPER_PROMPT }
+const COVER_LETTER_CREATION_PROMPT = `You are an expert career assistant specializing in writing tailored cover letters for job applications.
+
+Below, you will receive:
+- A JSON object containing grouped, relevant details from the job posting and matching resume content from the applicant, as retrieved from a vector database.
+
+Your task:
+- Carefully read and understand all provided information.
+- Use the company name/description, job title, and job overview to set the context and personalize the cover letter.
+- For each responsibility, requirement and attributes listed in the job posting, highlight how the applicant’s experience and skills (from the resume chunks) directly match or exceed what is asked.
+- Write in a professional, engaging, and concise style.
+- Make the cover letter specific to the job, demonstrating genuine interest in the company and role.
+- Do not invent or hallucinate information; use only the provided content.
+- Structure the cover letter with a brief introduction, targeted body paragraphs addressing the job’s requirements and responsibilities, and a strong closing statement.
+
+Output only the final cover letter text, with no explanations or extra formatting.
+
+You will receive a JSON object where each top-level key (such as "responsibility", "requirement_must_have", or "requirement_nice_to_have") represents a category from the job posting. Each key contains an array of objects. Each object has:
+    - "content": the exact text from the job posting chunk describing a specific responsibility or requirement.
+    - "document": an array of relevant resume excerpts from the applicant, retrieved from a vector database. These are direct matches to the job posting content.
+
+Use the "content" to understand what the job requires, and use the "document" array to find and highlight the applicant's matching experience and skills in your cover letter.`
+
+export { DOC_CHUNKING_DEVELOPER_PROMPT, JOB_POSTING_CHUNKING_DEVELOPER_PROMPT, COVER_LETTER_CREATION_PROMPT }

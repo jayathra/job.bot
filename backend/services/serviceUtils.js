@@ -1,6 +1,7 @@
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { z } from "zod";
 import stringSimilarity from 'string-similarity';
+import crypto from 'crypto';
 
 // Local LLM chunking schema
 export const format = {
@@ -98,6 +99,10 @@ export const verifyChunks = (chunkArray, fullText) => {
     return { verified, idxArray };
 }
 
+const hashContent = (content) => {
+    return crypto.createHash('sha256').update(content).digest('hex');
+} // CHANGE THIS TO UUID
+
 export const vectorDbPrep = (chunkArray) => {
     const documents = chunkArray.map(chunk => chunk.content);
     const metadatas = chunkArray.map(chunk => ({
@@ -105,6 +110,16 @@ export const vectorDbPrep = (chunkArray) => {
         char_count: chunk.char_count,
         overlap_chars: chunk.overlap_chars
     }));
-    const ids = chunkArray.map((_, idx) => `docchunk_${idx}_${Date.now()}`);
+    const ids = chunkArray.map(chunk => hashContent(normalizeText(chunk.content)));
     return { documents, metadatas, ids }
+}
+
+export const deduplicateChunks = (chunkArray) => {
+    const seen = new Set();
+    return chunkArray.filter(chunk => {
+        const normContent = normalizeText(chunk.content);
+        if (seen.has(normContent)) return false;
+        seen.add(normContent);
+        return true;
+    });
 }

@@ -1,6 +1,7 @@
 import {
     DOC_CHUNKING_DEVELOPER_PROMPT,
-    JOB_POSTING_CHUNKING_DEVELOPER_PROMPT
+    JOB_POSTING_CHUNKING_DEVELOPER_PROMPT,
+    COVER_LETTER_CREATION_PROMPT
 } from './promptsShort.js';
 import { zodTextFormat } from "openai/helpers/zod";
 import { format } from './serviceUtils.js'
@@ -10,7 +11,12 @@ import { OpenAIEmbeddingFunction } from "@chroma-core/openai";
 import OpenAI from "openai";
 import axios from 'axios';
 
-import { chunkSchema, parseFiles, verifyChunks, vectorDbPrep } from './serviceUtils.js';
+import {
+    chunkSchema,
+    parseFiles,
+    verifyChunks,
+    vectorDbPrep,
+    deduplicateChunks } from './serviceUtils.js';
 
 import dotenv from 'dotenv';
 dotenv.config()
@@ -64,13 +70,16 @@ export const localLlmChunking = async (devPrompt, userPrompt) => {
         model: 'qwen3:8b',
         prompt: `${devPrompt}\n\n${userPrompt}`,
         stream: false,
+        options: {
+            temperature: 0
+        },
         format
     });
 
     // The Ollama API returns the response as a string, so parse the JSON from the response
     const parsedResponse = JSON.parse(response.data.response);
 
-    return new Set(parsedResponse.chunks);
+    return parsedResponse.chunks;
 }
 
 // Helper to select the correct chunking function
@@ -98,6 +107,27 @@ export const chunkWithVerification = async ({ model, devPrompt, userPrompt, veri
     return chunks;
 }
 
+export const frontierCoverLetterGenerator = async (devPrompt, userPrompt) => {
+
+    console.log("Frontier LLM chunking initialized for cover letter generation")
+    const response = await openAiClient.responses.create({
+        model: "gpt-4o-mini",
+        input: [
+            {
+                role: "developer",
+                content: devPrompt
+            },
+            {
+                role: "user",
+                content: userPrompt
+            }
+        ],
+        max_output_tokens: 8000,
+    });
+
+    return response.output_text
+}
+
 export const processor = async (files, jobPostingText, model = 'gpt') => {
     // Parse and concatenate PDFs
     const concatParsedPdfs = await parseFiles(files);
@@ -121,14 +151,66 @@ export const processor = async (files, jobPostingText, model = 'gpt') => {
     });
 
     // Prepare and upsert to ChromaDB
-    const { documents, metadatas, ids } = vectorDbPrep(docChunks);
+    const uniqueDocChunks = deduplicateChunks(docChunks);
+    const { documents, metadatas, ids } = vectorDbPrep(uniqueDocChunks);
     await jobDocCollection.upsert({ documents, metadatas, ids });
 
-    console.log("Document chunks are: ", docChunks);
-    console.log("Job Posting chunks are: ", jobPostingChunks);
+    //console.log("Document chunks are: ", docChunks);
+    //console.log("Job Posting chunks are: ", jobPostingChunks);
+
+    let results = {};
+
+    for (let chunk of jobPostingChunks) {
+        const relevantInfo = ['responsibility', 'requirement_must_have', 'requirement_nice_to_have', 'attributes']
+        if (relevantInfo.includes(chunk.section_type)) {
+            const queryResult = await jobDocCollection.query({ queryTexts: [chunk.content] })
+            if (!results[chunk.section_type]) {
+                results[chunk.section_type] = [];
+            }
+            results[chunk.section_type].push({
+                content: chunk.content,
+                document: queryResult.documents[0]
+            });
+        } else {
+            if (!results[chunk.section_type]) {
+                results[chunk.section_type] = [];
+            }
+            results[chunk.section_type].push({
+                content: chunk.content,
+                document: []
+            });
+        }
+    }
+
+    // Console log
+    // Section Type: responsibility
+    //     Content: <chunk content>
+    //         Document: <document chunk> 
+    for (const sectionType in results) {
+        console.log(`\nSECTION TYPE: ${sectionType}\n`)
+        for (const chunk of results[sectionType]) {
+            console.log(`\n   JOB POSTING CONTENT: ${chunk.content}\n`)
+            let i=1;
+            for (const doc of chunk.document) {
+                console.log(`\n       DOCUMENT CHUNK ${i}: ${doc}\n`)
+                i++
+            }
+        }
+    }
+    //console.log(JSON.stringify(results))
+
+    const userPromptCoverLetter = `Please craft a cover letter for ${docChunks[0].section_type}. The JSON object specified in the developer prompt is ${JSON.stringify(results)}.`
+    const coverLetter = await frontierCoverLetterGenerator(COVER_LETTER_CREATION_PROMPT, userPromptCoverLetter)
+    console.log(coverLetter)
+
+    await chromaClient.deleteCollection({
+        name: "jobDocs"
+    })
 
     return { docChunks, jobPostingChunks };
 };
+
+
 
 
 
