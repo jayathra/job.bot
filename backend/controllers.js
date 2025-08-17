@@ -21,7 +21,9 @@ export const uploader = async (req, res) => {
     
         res.json({
             jobPostingChunks: result.jobPostingChunks,
-            docChunks: result.docChunks
+            docChunks: result.docChunks,
+            coverLetter: result.coverLetter,
+            url: result.url
         })
 
     } catch (error) {

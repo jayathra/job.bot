@@ -5,6 +5,7 @@ import SubmitFiles from './SubmitFiles';
 import JobPostingText from './JobPostingText';
 import ModelSelector from './modelSelector';
 import axios from 'axios';
+import UrlTextField from './UrlTextField';
 
 export default function FileUpload() {
 
@@ -12,7 +13,9 @@ export default function FileUpload() {
 
     const [jobPosting, setJobPosting] = useState("");
 
-    const [model, setModel] = useState("")
+    const [model, setModel] = useState("");
+
+    const [url, setUrl] = useState("");
 
     const fileUploadHandler = (e) => {
         const newFiles = Array.from(e.target.files);
@@ -39,12 +42,13 @@ export default function FileUpload() {
 
         if (jobPosting.trim()) {
             try {
-            const response = await axios.post('http://localhost:5000/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            })
-            console.log('Upload successful:', response.data);
+                const response = await axios.post('http://localhost:5000/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                })
+                console.log('Upload successful:', response.data);
+                setUrl(response.data.url)
             } catch (error) {
                 console.error('Upload failed:', error)
             }
@@ -69,8 +73,13 @@ export default function FileUpload() {
                     {jobPosting.trim() && (
                         <ModelSelector handleSelector={handleSelector} model={model} />
                     )}
-                    {jobPosting.trim() && model && (
-                        <SubmitFiles submitFileHandler={() => submitFileHandler(model)} />
+                    <div>
+                        {jobPosting.trim() && model && (
+                            <SubmitFiles submitFileHandler={() => submitFileHandler(model)} /> 
+                        )}
+                    </div>
+                    {url !== "" && (
+                        <UrlTextField url={url}/>
                     )}
                 </>
             )}
