@@ -10,6 +10,7 @@ import { ChromaClient } from "chromadb";
 import { OpenAIEmbeddingFunction } from "@chroma-core/openai";
 import OpenAI from "openai";
 import axios from "axios";
+import { createClient } from "../controllers/oAuthControllers.js";
 
 import {
   chunkSchema,
@@ -23,8 +24,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { google } from "googleapis";
-
-import fs from "fs";
 
 const openAiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -58,7 +57,7 @@ export const llmChunking = async (devPrompt, userPrompt) => {
       },
     ],
     temperature: 0, // Low temperature for consistency
-    max_output_tokens: 8000,
+    max_output_tokens: 13000,
     text: { format: zodTextFormat(chunkSchema, "chunk_array") },
   });
 
@@ -140,58 +139,20 @@ export const frontierCoverLetterGenerator = async (devPrompt, userPrompt) => {
   return response.output_text;
 };
 
-const googleApiTest = async (coverLetter, fullName) => {
-  // config for google apis
-  const SCOPES = [
-    "https://www.googleapis.com/auth/documents",
-    "https://www.googleapis.com/auth/drive",
-  ];
-
-  const { installed: oAuthKeys } = JSON.parse(
-    fs.readFileSync(process.env.GOOGLE_OAUTH_KEY_PATH)
-  );
-
-  const oauth2Client = new google.auth.OAuth2(
-    oAuthKeys.client_id,
-    oAuthKeys.client_secret,
-    oAuthKeys.redirect_uris
-  );
-
-  const url = oauth2Client.generateAuthUrl({
-    // 'online' (default) or 'offline' (gets refresh_token)
-    access_type: "offline",
-
-    // If you only need one scope, you can pass it as a string
-    scope: SCOPES,
-  });
-
-  console.log(url);
-
-  //   const auth = new google.auth.GoogleAuth({
-  //     keyFilename: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-  //     scopes: SCOPES,
-  //   });
-
-  const { tokens } = await oauth2Client.getToken(oAuthKeys.code);
-
-  //   const authClient = await auth.getClient();
-
-  oauth2Client.setCredentials(tokens);
-
-  const docs = google.docs({ version: "v1", auth: oauth2Client });
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-
+const googleDocCreation = async (coverLetter, fullName, tokens) => {
+  const oAuth2Client = createClient();
+  oAuth2Client.setCredentials(tokens);
+  const docs = google.docs({ version: "v1", auth: oAuth2Client });
+  const drive = google.drive({ version: "v3", auth: oAuth2Client });
   const newDoc = await drive.files.create({
     requestBody: {
-      name: `Cover Letter`,
+      name: `${fullName}'s Cover Letter`,
       mimeType: "application/vnd.google-apps.document",
       parents: ["1uAV_4fW5byS4XVn4ymxWlr09PUWSmRo6"],
     },
   });
-
   console.log(newDoc.data.id);
   const docId = newDoc.data.id;
-
   await drive.permissions.create({
     fileId: docId,
     requestBody: {
@@ -201,7 +162,6 @@ const googleApiTest = async (coverLetter, fullName) => {
     },
     transferOwnership: true,
   });
-
   await docs.documents.batchUpdate({
     documentId: docId,
     requestBody: {
@@ -215,16 +175,16 @@ const googleApiTest = async (coverLetter, fullName) => {
       ],
     },
   });
-
-  const urls = `https://docs.google.com/document/d/${docId}/edit`;
-  return urls;
+  const url = `https://docs.google.com/document/d/${docId}/edit`;
+  return url;
 };
 
-export const processor = async (files, jobPostingText, model = "gpt") => {
-  const testUrl = await googleApiTest("Test Letter", "Jon Doe");
-  console.log(testUrl);
-  return;
-
+export const processor = async (
+  files,
+  jobPostingText,
+  model = "gpt",
+  tokens
+) => {
   // Parse and concatenate PDFs
   const concatParsedPdfs = await parseFiles(files);
 
@@ -297,23 +257,6 @@ export const processor = async (files, jobPostingText, model = "gpt") => {
     }
   }
 
-  // Console log JSON object
-  // Section Type: responsibility
-  //     Content: <chunk content>
-  //         Document: <document chunk>
-  // for (const sectionType in results) {
-  //     console.log(`\nSECTION TYPE: ${sectionType}\n`)
-  //     for (const chunk of results[sectionType]) {
-  //         console.log(`\n   JOB POSTING CONTENT: ${chunk.content}\n`)
-  //         let i=1;
-  //         for (const doc of chunk.document) {
-  //             console.log(`\n       DOCUMENT CHUNK ${i}: ${doc}\n`)
-  //             i++
-  //         }
-  //     }
-  // }
-  //console.log(JSON.stringify(results))
-
   let fullName;
   for (let chunk of docChunks) {
     if (chunk.section_type === "full_name") fullName = chunk.content;
@@ -338,6 +281,8 @@ export const processor = async (files, jobPostingText, model = "gpt") => {
     name: "jobDocs",
   });
 
-  const url = googleApiTest(coverLetter, fullName);
+  const url = await googleDocCreation(coverLetter, fullName, tokens);
+  console.log(url);
+
   return { docChunks, jobPostingChunks, coverLetter, url };
 };

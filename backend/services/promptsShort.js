@@ -9,10 +9,11 @@ REQUIREMENTS:
 - Allow 50–100 character overlap only within the same section for continuity.
 - Each content type must be in its own chunk; do not mix types.
 - Each individual education, technical skill, soft skill, project, publication, certification, or achievement must be in its own chunk, even if it is short. Do NOT group multiple items of the same section type (mentioned earlier) together in a single chunk.
-- Each individual work experience (at a specific place doing a specific role) should be in a single chunk where multiple bullet points can be listed within the same chunk. 
+- Each individual work experience (at a specific place doing a specific role) should be in a single chunk where multiple bullet points can be listed within the same chunk.
+- If you see a cover letter, do not chunk it. Save it as an entire letter which can be over 500 characters.
 
 SECTION TYPES:
-- full_name, contact_info, professional_summary, work_experience, education, skills_technical, skills_soft, project, certification, achievement, other, additional_info
+- full_name, contact_info, professional_summary, work_experience, education, skills_technical, skills_soft, project, certification, achievement, cover_letter, other, additional_info
 
 OUTPUT:
 Return only JSON: { "chunks": [ { "section_type": "...", "content": "...", "char_count": ..., "overlap_chars": ... }, ... ] }
@@ -66,7 +67,11 @@ You will receive a JSON object where each top-level key (such as "responsibility
     - "document": an array of relevant excerpts from the applicant, retrieved from a vector database. These are direct matches to the job posting content.
 There will be top-level keys or section_types that do not have a document key. Those should be used to understand the comapny and the role.
 
-Use the "content" to understand what the job posting says, and use the "document" array to find and highlight the applicant's matching experience and skills in your cover letter. Mimick the writing style and use similar vocabulary in this user uploaded "document" array.
-Remember your number one priority - do not invent or hallucinate information; use only the provided content.`
+Use the "content" to understand what the job posting says, and use the "document" array to find and highlight the applicant's matching experience and skills in your cover letter. If there's an entire cover letter in the JSON object, mimic the writing style, tone and use similar vocabulary.
+Remember your number one priority - do not invent or hallucinate information; use only the provided content.`;
 
-export { DOC_CHUNKING_DEVELOPER_PROMPT, JOB_POSTING_CHUNKING_DEVELOPER_PROMPT, COVER_LETTER_CREATION_PROMPT }
+export {
+  DOC_CHUNKING_DEVELOPER_PROMPT,
+  JOB_POSTING_CHUNKING_DEVELOPER_PROMPT,
+  COVER_LETTER_CREATION_PROMPT,
+};
