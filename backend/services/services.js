@@ -34,6 +34,13 @@ const chromaClient = new ChromaClient({
   port: "8000",
 });
 
+try {
+  await chromaClient.deleteCollection({ name: "jobDocs" });
+  console.log("Deleted existing collection: jobDocs");
+} catch {
+  console.log("No existing collection found, skipping delete");
+}
+
 const jobDocCollection = await chromaClient.getOrCreateCollection({
   name: "jobDocs",
   embeddingFunction: new OpenAIEmbeddingFunction({
@@ -179,6 +186,52 @@ const googleDocCreation = async (coverLetter, fullName, tokens) => {
   return url;
 };
 
+export const createCoverLetterPrompt = async (jobPostingChunks) => {
+  let results = {};
+  for (let chunk of jobPostingChunks) {
+    const relevantInfo = [
+      "responsibility",
+      "requirement_must_have",
+      "requirement_nice_to_have",
+      "attributes",
+    ];
+    if (relevantInfo.includes(chunk.section_type)) {
+      const queryResult = await jobDocCollection.query({
+        queryTexts: [chunk.content],
+      });
+      if (!results[chunk.section_type]) {
+        results[chunk.section_type] = [];
+      }
+      results[chunk.section_type].push({
+        content: chunk.content,
+        document: queryResult.documents[0],
+      });
+    } else {
+      if (!results[chunk.section_type]) {
+        results[chunk.section_type] = [];
+      }
+      results[chunk.section_type].push({
+        content: chunk.content,
+        document: [],
+      });
+    }
+  }
+  return results;
+};
+
+export const extractDataFromDocs = (docChunks) => {
+  let fullName;
+  for (let chunk of docChunks) {
+    if (chunk.section_type === "full_name") fullName = chunk.content;
+  }
+
+  let contactInfo;
+  for (let chunk of docChunks) {
+    if (chunk.section_type === "contact_info") contactInfo = chunk.content;
+  }
+  return { fullName, contactInfo };
+};
+
 export const processor = async (
   files,
   jobPostingText,
@@ -223,49 +276,11 @@ export const processor = async (
     });
   }
 
-  //console.log("Document chunks are: ", docChunks);
-  //console.log("Job Posting chunks are: ", jobPostingChunks);
+  console.log("Creating cover letter prompt");
+  const results = await createCoverLetterPrompt(jobPostingChunks);
+  console.log(results);
 
-  let results = {};
-
-  for (let chunk of jobPostingChunks) {
-    const relevantInfo = [
-      "responsibility",
-      "requirement_must_have",
-      "requirement_nice_to_have",
-      "attributes",
-    ];
-    if (relevantInfo.includes(chunk.section_type)) {
-      const queryResult = await jobDocCollection.query({
-        queryTexts: [chunk.content],
-      });
-      if (!results[chunk.section_type]) {
-        results[chunk.section_type] = [];
-      }
-      results[chunk.section_type].push({
-        content: chunk.content,
-        document: queryResult.documents[0],
-      });
-    } else {
-      if (!results[chunk.section_type]) {
-        results[chunk.section_type] = [];
-      }
-      results[chunk.section_type].push({
-        content: chunk.content,
-        document: [],
-      });
-    }
-  }
-
-  let fullName;
-  for (let chunk of docChunks) {
-    if (chunk.section_type === "full_name") fullName = chunk.content;
-  }
-
-  let contactInfo;
-  for (let chunk of docChunks) {
-    if (chunk.section_type === "contact_info") contactInfo = chunk.content;
-  }
+  const { fullName, contactInfo } = extractDataFromDocs(docChunks);
 
   const userPromptCoverLetter = `The JSON object specified in the developer prompt is ${JSON.stringify(
     results
@@ -281,6 +296,7 @@ export const processor = async (
     name: "jobDocs",
   });
 
+  console.log("Creating Google Doc");
   const url = await googleDocCreation(coverLetter, fullName, tokens);
   console.log(url);
 

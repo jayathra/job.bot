@@ -14,11 +14,7 @@ export const uploader = async (req, res) => {
       });
     }
 
-    if (!req.session.googleTokens) {
-      return res.json({
-        authUrl: "http://localhost:5000/auth", // backend route that starts Google OAuth
-      });
-    } else {
+    if (req.session.googleTokens) {
       console.log("Sending uploaded documents and job posting for processing");
       const result = await processor(
         req.files,
@@ -33,6 +29,11 @@ export const uploader = async (req, res) => {
         coverLetter: result.coverLetter,
         url: result.url,
       });
+    } else {
+      console.error("User is trying to upload documents without auth tokens");
+      return res
+        .status(500)
+        .send("User is trying to upload documents without auth tokens");
     }
   } catch (error) {
     console.error("Upload processing failed:", error);
