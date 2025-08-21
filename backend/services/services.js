@@ -29,25 +29,28 @@ const openAiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const chromaClient = new ChromaClient({
-  host: "localhost",
-  port: "8000",
-});
+const chromaInit = async () => {
+  const chromaClient = new ChromaClient({
+    host: "localhost",
+    port: "8000",
+  });
 
-try {
-  await chromaClient.deleteCollection({ name: "jobDocs" });
-  console.log("Deleted existing collection: jobDocs");
-} catch {
-  console.log("No existing collection found, skipping delete");
-}
+  try {
+    await chromaClient.deleteCollection({ name: "jobDocs" });
+    console.log("Deleted existing collection: jobDocs");
+  } catch {
+    console.log("No existing collection found, skipping delete");
+  }
 
-const jobDocCollection = await chromaClient.getOrCreateCollection({
-  name: "jobDocs",
-  embeddingFunction: new OpenAIEmbeddingFunction({
-    apiKey: process.env.OPENAI_API_KEY,
-    modelName: "text-embedding-3-small",
-  }),
-});
+  const jobDocCollection = await chromaClient.getOrCreateCollection({
+    name: "jobDocs",
+    embeddingFunction: new OpenAIEmbeddingFunction({
+      apiKey: process.env.OPENAI_API_KEY,
+      modelName: "text-embedding-3-small",
+    }),
+  });
+  return { jobDocCollection, chromaClient };
+};
 
 export const llmChunking = async (devPrompt, userPrompt) => {
   console.log("Frontier LLM chunking initialized");
@@ -186,7 +189,10 @@ const googleDocCreation = async (coverLetter, fullName, tokens) => {
   return url;
 };
 
-export const createCoverLetterPrompt = async (jobPostingChunks) => {
+export const createCoverLetterPrompt = async (
+  jobPostingChunks,
+  jobDocCollection
+) => {
   let results = {};
   for (let chunk of jobPostingChunks) {
     const relevantInfo = [
@@ -266,6 +272,9 @@ export const processor = async (
     "Preparing and sending user uploaded document chunks to ChromaDB"
   );
   const uniqueDocChunks = deduplicateChunks(docChunks);
+
+  const { jobDocCollection, chromaClient } = await chromaInit();
+
   const { documents, metadatas, ids } = vectorDbPrep(uniqueDocChunks);
   try {
     await jobDocCollection.upsert({ documents, metadatas, ids });
@@ -277,7 +286,10 @@ export const processor = async (
   }
 
   console.log("Creating cover letter prompt");
-  const results = await createCoverLetterPrompt(jobPostingChunks);
+  const results = await createCoverLetterPrompt(
+    jobPostingChunks,
+    jobDocCollection
+  );
   console.log(results);
 
   const { fullName, contactInfo } = extractDataFromDocs(docChunks);
