@@ -8,6 +8,7 @@ import axios from "axios";
 import LoginButton from "./LoginButton";
 import Stack from "@mui/material/Stack";
 import OpenButton from "./OpenButton";
+import CircularProgress from "@mui/material/CircularProgress";
 
 export default function FileUpload() {
   const [files, setFiles] = useState([]);
@@ -19,6 +20,8 @@ export default function FileUpload() {
   const [url, setUrl] = useState("");
 
   const [authorized, setAuthorized] = useState(false);
+
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const fileUploadHandler = async (e) => {
     const newFiles = Array.from(e.target.files);
@@ -77,12 +80,14 @@ export default function FileUpload() {
       const response = await axios.get("http://localhost:5000/auth/status", {
         withCredentials: true,
       });
+      setCheckingAuth(false);
       if (response.data.authorized) {
         setAuthorized(true);
       }
     } catch (err) {
       console.error("Auth check failed:", err);
       setAuthorized(false);
+      setCheckingAuth(false);
     }
   };
 
@@ -96,7 +101,10 @@ export default function FileUpload() {
 
   return (
     <Stack direction="column" spacing={2}>
-      {!authorized && <LoginButton loginHandler={loginHandler} />}
+      {!authorized && !checkingAuth && (
+        <LoginButton loginHandler={loginHandler} />
+      )}
+      {checkingAuth && <CircularProgress />}
       <h1>job.bot</h1>
       {authorized && <FileUploadButton fileUploadHandler={fileUploadHandler} />}
       {files.length > 0 && (
