@@ -21,7 +21,7 @@ export default function FileUpload() {
 
   const [authorized, setAuthorized] = useState(false);
 
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAuthorization, setCheckingAuthorization] = useState(true);
 
   const fileUploadHandler = async (e) => {
     const newFiles = Array.from(e.target.files);
