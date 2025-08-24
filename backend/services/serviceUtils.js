@@ -95,6 +95,35 @@ export const verifyChunks = (chunkArray, fullText) => {
   return { verified, idxArray };
 };
 
+export const verifyText = (chunkArray, fullText) => {
+  const normFull = normalizeText(fullText);
+  const coverage = new Array(normFull.length).fill(false);
+  for (let i = 0; i < chunkArray.length; i++) {
+    const normChunk = normalizeText(chunkArray[i].content);
+    for (let j = 0; j <= normFull.length - normChunk.length; j++) {
+      const candidate = normFull.substr(j, normChunk.length);
+      const similarity = stringSimilarity.compareTwoStrings(
+        normChunk,
+        candidate
+      );
+      if (similarity > 0.95) {
+        for (let k = j; k < j + normChunk.length; k++) {
+          coverage[k] = true;
+        }
+      }
+    }
+  }
+
+  const uncoveredIndices = coverage
+    .map((covered, i) => (!covered ? i : null))
+    .filter((x) => x !== null);
+
+  return {
+    verified: uncoveredIndices.length === 0,
+    uncoveredIndices,
+  };
+};
+
 const hashContent = (content) => {
   return crypto.createHash("sha256").update(content).digest("hex");
 }; // CHANGE THIS TO UUID
