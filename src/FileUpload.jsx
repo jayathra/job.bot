@@ -80,7 +80,7 @@ export default function FileUpload() {
       const response = await axios.get("http://localhost:5000/auth/status", {
         withCredentials: true,
       });
-      setCheckingAuth(false);
+      setCheckingAuthorization(false);
       if (response.data.authorized) {
         setAuthorized(true);
       }
